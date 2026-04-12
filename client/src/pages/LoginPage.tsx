@@ -1,14 +1,29 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn, useSession } from "../lib/auth-client";
+
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState("");
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
 
   if (isPending) {
     return (
@@ -22,16 +37,16 @@ export default function LoginPage() {
     return <Navigate to="/" replace />;
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  async function onSubmit(data: LoginFormData) {
+    setServerError("");
 
-    const { error } = await signIn.email({ email, password });
+    const { error } = await signIn.email({
+      email: data.email,
+      password: data.password,
+    });
 
     if (error) {
-      setError(error.message || "Invalid email or password");
-      setLoading(false);
+      setServerError(error.message || "Invalid email or password");
     } else {
       navigate("/");
     }
@@ -44,7 +59,15 @@ export default function LoginPage() {
           Ticket Manager
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {(Object.keys(errors).length > 0 || serverError) && (
+            <ul className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md px-4 py-3 list-disc list-inside space-y-1">
+              {errors.email && <li>{errors.email.message}</li>}
+              {errors.password && <li>{errors.password.message}</li>}
+              {serverError && <li>{serverError}</li>}
+            </ul>
+          )}
+
           <div>
             <label
               htmlFor="email"
@@ -55,10 +78,8 @@ export default function LoginPage() {
             <input
               id="email"
               type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              {...register("email")}
+              className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent ${errors.email ? "border-red-500 focus:ring-red-500" : "border-gray-300 dark:border-gray-700 focus:ring-purple-500"}`}
               placeholder="you@example.com"
             />
           </div>
@@ -73,24 +94,18 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              {...register("password")}
+              className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent ${errors.password ? "border-red-500 focus:ring-red-500" : "border-gray-300 dark:border-gray-700 focus:ring-purple-500"}`}
               placeholder="Enter your password"
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          )}
-
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors cursor-pointer"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {isSubmitting ? "Signing in..." : "Sign In"}
           </button>
         </form>
       </div>
