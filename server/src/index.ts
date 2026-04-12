@@ -8,7 +8,10 @@ import prisma from "./lib/prisma";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL!,
+  credentials: true,
+}));
 
 // Better Auth handler must come before express.json()
 app.all("/api/auth/*splat", toNodeHandler(auth));
