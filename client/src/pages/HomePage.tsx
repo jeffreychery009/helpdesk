@@ -1,12 +1,8 @@
 export default function HomePage() {
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-        Dashboard
-      </h1>
-      <p className="text-gray-600 dark:text-gray-400">
-        Welcome to Ticket Manager.
-      </p>
+      <h2 className="text-lg font-semibold text-black mb-2">Dashboard</h2>
+      <p className="text-sm">Welcome to Ticket Manager.</p>
     </div>
   );
 }
