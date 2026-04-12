@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
+import { requireAuth } from "./middleware/auth";
 import prisma from "./lib/prisma";
 
 const app = express();
@@ -21,6 +22,10 @@ app.get("/api/health", async (_req, res) => {
   } catch {
     res.status(500).json({ status: "error", database: "disconnected" });
   }
+});
+
+app.get("/api/health/me", requireAuth, (req, res) => {
+  res.json({ user: req.user, session: req.session });
 });
 
 app.listen(PORT, () => {
