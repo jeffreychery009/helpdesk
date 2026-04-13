@@ -7,6 +7,7 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
 import { requireAuth } from "./middleware/auth";
 import prisma from "./lib/prisma";
+import routes from "./routes";
 
 // Validate required environment variables at startup
 const requiredEnvVars = [
@@ -50,6 +51,8 @@ app.use("/api/auth/sign-in", authSignInLimiter);
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.use(express.json());
+
+app.use("/api", routes);
 
 app.get("/api/health", async (_req, res) => {
   try {
