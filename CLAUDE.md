@@ -28,10 +28,12 @@ Authentication is handled by **Better Auth** with email/password credentials.
 - Auth routes mounted at `/api/auth/*splat` via `toNodeHandler(auth)` — must be registered before `express.json()`
 - Email/password enabled, **sign-up disabled** (`disableSignUp: true`) — users are created by admins or seed script only
 - Trusted origins configured via `CLIENT_URL` env var
+- Custom `role` field exposed via `user.additionalFields`
 
 ### Client (`client/src/lib/auth-client.ts`)
 - Uses `createAuthClient()` from `better-auth/react`
 - Connects to server via `VITE_API_URL` env var
+- Uses `inferAdditionalFields<typeof auth>()` plugin (imports server auth type) to type custom user fields
 - Exports: `useSession`, `signIn`, `signOut`
 
 ### Middleware (`server/src/middleware/auth.ts`)
@@ -44,8 +46,12 @@ Authentication is handled by **Better Auth** with email/password credentials.
 - Run via: `npx tsx server/src/seed.ts`
 
 ### Roles
-- `ADMIN` — can create and manage agents
+- `ADMIN` — can create and manage agents, access `/users` page
 - `AGENT` — handles and responds to tickets (default role)
+
+### Route Guards
+- `ProtectedRoute` — redirects unauthenticated users to `/login`
+- `AdminRoute` — redirects non-admin users to `/` (checks `session.user.role === "ADMIN"`)
 
 ### Prisma Models (Better Auth)
 - `User` — id, name, email, emailVerified, role, image
