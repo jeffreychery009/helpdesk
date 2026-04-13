@@ -71,10 +71,29 @@ Authentication is handled by **Better Auth** with email/password credentials.
 - `bun run dev` — start both client and server
 - `bun run dev:client` — start React dev server (port 5173)
 - `bun run dev:server` — start Express server (port 3000)
+- `bun run test` — run client component tests (from root)
+- `bun run test:watch` — run client component tests in watch mode
 - `bun run test:e2e` — run all E2E tests
 - `bun run test:e2e:ui` — Playwright UI mode
 - `bun run test:e2e:headed` — run with visible browser
 - `bun run test:e2e:install` — install Playwright browsers
+
+## Component Testing
+
+Component tests use **Vitest** + **React Testing Library** with jsdom.
+
+- Config: `client/vite.config.ts` (test section)
+- Setup file: `client/src/test/setup.ts` (loads `@testing-library/jest-dom` matchers)
+- Test files: colocated next to components as `*.test.tsx` (e.g., `UsersPage.test.tsx`)
+- Run: `bun run test` from root or `bunx vitest run` from `client/`
+
+### Writing component tests
+
+- Mock API calls by mocking `@/lib/api` with `vi.mock()` — mock `api.get`, `api.post`, etc.
+- Wrap components in `QueryClientProvider` with `retry: false` for deterministic tests
+- Create a fresh `QueryClient` per test to avoid shared cache
+- Test: loading states, successful data rendering, empty states, error states, and correct API calls
+- Use `screen.findBy*` (async) to wait for data to appear after mocked fetches resolve
 
 ## E2E Testing
 

@@ -6,6 +6,8 @@
     "dev": "bun run --filter '*' dev",
     "dev:client": "bun run --filter client dev",
     "dev:server": "bun run --filter server dev",
+    "test": "bun run --filter client test",
+    "test:watch": "bun run --filter client test:watch",
     "test:e2e": "bunx playwright test",
     "test:e2e:ui": "bunx playwright test --ui",
     "test:e2e:headed": "bunx playwright test --headed",
@@ -13,8 +15,14 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/pg": "^8.11.6",
+    "client": "workspace:*",
     "dotenv": "^16.4.7",
-    "pg": "^8.13.1"
+    "jsdom": "^29.0.2",
+    "pg": "^8.13.1",
+    "vitest": "^4.1.4"
   }
 }
