@@ -5,6 +5,16 @@
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "dev:client": "bun run --filter client dev",
-    "dev:server": "bun run --filter server dev"
+    "dev:server": "bun run --filter server dev",
+    "test:e2e": "bunx playwright test",
+    "test:e2e:ui": "bunx playwright test --ui",
+    "test:e2e:headed": "bunx playwright test --headed",
+    "test:e2e:install": "bunx playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/pg": "^8.11.6",
+    "dotenv": "^16.4.7",
+    "pg": "^8.13.1"
   }
 }

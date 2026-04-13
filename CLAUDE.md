@@ -66,11 +66,34 @@ Authentication is handled by **Better Auth** with email/password credentials.
 - `Account` — credential provider with hashed password
 - `Verification` — for email verification tokens
 
+## E2E Testing
+
+End-to-end tests use **Playwright** with a separate PostgreSQL database (`helpdesk_test`).
+
+### Setup
+
+- Config: `playwright.config.ts` (repo root)
+- Test directory: `e2e/`
+- Environment: `.env.test` (repo root) — test DB URL, ports, credentials
+- Global setup (`e2e/global-setup.ts`): creates `helpdesk_test` DB, runs Prisma migrations, seeds test admin
+- Global teardown (`e2e/global-teardown.ts`): truncates all tables after run
+- Test servers run on separate ports (server: 3001, client: 5174) to avoid conflicts with dev
+
+### Test Database
+
+- Database: `helpdesk_test` (separate from dev `helpdesk`)
+- Test admin: `testadmin@example.com` / `TestPassword123!`
+- Created automatically by global setup, or manually: `DATABASE_URL="postgresql://postgres:Esmirla33024@localhost:5432/helpdesk_test?schema=public" ADMIN_EMAIL="testadmin@example.com" ADMIN_PASSWORD="TestPassword123!" bun run seed` (from `server/`)
+
 ## Commands
 
 - `bun run dev` — start both client and server
 - `bun run dev:client` — start React dev server (port 5173)
 - `bun run dev:server` — start Express server (port 3000)
+- `bun run test:e2e` — run all E2E tests
+- `bun run test:e2e:ui` — Playwright UI mode
+- `bun run test:e2e:headed` — run with visible browser
+- `bun run test:e2e:install` — install Playwright browsers
 
 ## Documentation
 
