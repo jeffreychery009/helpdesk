@@ -68,3 +68,7 @@ export const ticketSchema = z.object({
 });
 
 export type Ticket = z.infer<typeof ticketSchema>;
+
+export const assignTicketSchema = z.object({
+  assignedToId: z.string().nullable(),
+});

@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import api from "@/lib/api";
 import type { Ticket, TicketStatus, TicketCategory } from "core/schemas/ticket";
@@ -7,6 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type TicketDetail = Ticket & {
+  assignedTo: { id: string; name: string } | null;
+};
+
+type Assignee = { id: string; name: string };
 
 function formatCategory(category: TicketCategory) {
   return category
@@ -23,14 +36,41 @@ function statusVariant(status: TicketStatus) {
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["ticket", id],
     queryFn: async () => {
-      const res = await api.get<{ ticket: Ticket }>(`/api/tickets/${id}`);
+      const res = await api.get<{ ticket: TicketDetail }>(`/api/tickets/${id}`);
       return res.data.ticket;
     },
   });
+
+  const { data: assignees } = useQuery({
+    queryKey: ["assignees"],
+    queryFn: async () => {
+      const res = await api.get<{ users: Assignee[] }>("/api/tickets/assignees");
+      return res.data.users;
+    },
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async (assignedToId: string | null) => {
+      const res = await api.patch<{ ticket: TicketDetail }>(
+        `/api/tickets/${id}/assign`,
+        { assignedToId },
+      );
+      return res.data.ticket;
+    },
+    onSuccess: (ticket) => {
+      queryClient.setQueryData(["ticket", id], ticket);
+    },
+  });
+
+  function handleAssign(value: string) {
+    const assignedToId = value === "unassigned" ? null : value;
+    assignMutation.mutate(assignedToId);
+  }
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -71,7 +111,7 @@ export default function TicketDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-8">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">From</p>
                 <p className="font-medium">{data.senderName}</p>
@@ -82,6 +122,30 @@ export default function TicketDetailPage() {
                 <p>{new Date(data.createdAt).toLocaleString()}</p>
                 <p className="text-muted-foreground mt-2">Updated</p>
                 <p>{new Date(data.updatedAt).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-1">Assigned to</p>
+                <Select
+                  value={data.assignedTo?.id ?? "unassigned"}
+                  onValueChange={handleAssign}
+                  disabled={assignMutation.isPending}
+                  items={[
+                    { value: "unassigned", label: "Unassigned" },
+                    ...(assignees?.map((user) => ({ value: user.id, label: user.name })) ?? []),
+                  ]}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Unassigned" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {assignees?.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

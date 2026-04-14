@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import prisma from "../lib/prisma";
 import {
   ticketQuerySchema,
+  assignTicketSchema,
   ticketStatuses,
   ticketCategories,
 } from "core/schemas/ticket";
@@ -74,7 +75,14 @@ export async function getTicket(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
 
-    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    const ticket = await prisma.ticket.findUnique({
+      where: { id },
+      include: {
+        assignedTo: {
+          select: { id: true, name: true },
+        },
+      },
+    });
     if (!ticket) {
       res.status(404).json({ error: "Ticket not found" });
       return;
@@ -83,5 +91,57 @@ export async function getTicket(req: Request, res: Response) {
     res.json({ ticket });
   } catch {
     res.status(500).json({ error: "Failed to fetch ticket" });
+  }
+}
+
+export async function assignTicket(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+
+    const parsed = assignTicketSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const { assignedToId } = parsed.data;
+
+    if (assignedToId) {
+      const user = await prisma.user.findUnique({
+        where: { id: assignedToId, deletedAt: null },
+      });
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+    }
+
+    const ticket = await prisma.ticket.update({
+      where: { id },
+      data: { assignedToId },
+      include: {
+        assignedTo: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    res.json({ ticket });
+  } catch {
+    res.status(500).json({ error: "Failed to assign ticket" });
+  }
+}
+
+export async function getAssignees(_req: Request, res: Response) {
+  try {
+    const users = await prisma.user.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+
+    res.json({ users });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch assignees" });
   }
 }
