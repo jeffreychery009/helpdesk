@@ -72,3 +72,25 @@ export type Ticket = z.infer<typeof ticketSchema>;
 export const assignTicketSchema = z.object({
   assignedToId: z.string().nullable(),
 });
+
+export const updateTicketSchema = z.object({
+  status: z.enum(ticketStatuses).optional(),
+  category: z.enum(ticketCategories).optional(),
+});
+
+export const replySenderTypes = ["AGENT", "CUSTOMER"] as const;
+export type ReplySenderType = (typeof replySenderTypes)[number];
+
+export const createReplySchema = z.object({
+  body: z.string().min(1, "Reply body is required"),
+});
+
+export type TicketReply = {
+  id: string;
+  body: string;
+  senderType: ReplySenderType;
+  authorId: string | null;
+  author: { id: string; name: string } | null;
+  isAiGenerated: boolean;
+  createdAt: string;
+};

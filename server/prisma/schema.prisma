@@ -25,6 +25,11 @@ enum TicketCategory {
   REFUND_REQUEST
 }
 
+enum SenderType {
+  AGENT
+  CUSTOMER
+}
+
 model User {
   id            String    @id
   name          String
@@ -113,6 +118,7 @@ model TicketReply {
   ticketId      String
   ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   body          String
+  senderType    SenderType
   authorId      String?
   author        User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
   isAiGenerated Boolean  @default(false)

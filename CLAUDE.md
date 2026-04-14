@@ -119,13 +119,18 @@ Tickets are created from inbound emails. Fields: `subject`, `body`, `senderEmail
 
 - `POST /api/webhooks/inbound-email` — public, no auth; accepts `{ subject, body, senderEmail, senderName }`, creates a ticket; intended to be wired to an email provider (SendGrid/Mailgun) later
 - `GET /api/tickets` — requires auth; returns `{ tickets: [...] }` ordered by `createdAt desc`
-- `GET /api/tickets/:id` — requires auth; returns `{ ticket }` or 404
+- `GET /api/tickets/:id` — requires auth; returns `{ ticket }` with `replies` included, or 404
+- `POST /api/tickets/:id/replies` — requires auth; accepts `{ body }`, creates a reply with `senderType: "AGENT"` and the authenticated user as author
+
+### Replies
+
+Replies are stored in the `TicketReply` model. Each reply has a `senderType` (`AGENT` or `CUSTOMER`) and an optional `author` (User relation, set for agent replies). The `isAiGenerated` flag marks AI-drafted replies. All endpoints that return a single ticket (`GET /:id`, `PATCH /:id`, `PATCH /:id/assign`, `POST /:id/replies`) must include `replies` with `author` in the response to keep the client cache consistent.
 
 ### Key Files
 
 - `core/src/schemas/ticket.ts` — `inboundEmailSchema` (Zod), `ticketSchema`, `Ticket` type, `TicketStatus` and `TicketCategory` union types
 - `server/src/controllers/webhooks.ts` — `inboundEmail` handler
-- `server/src/controllers/tickets.ts` — `getTickets`, `getTicket` handlers
+- `server/src/controllers/tickets.ts` — `getTickets`, `getTicket`, `createReply` handlers
 - `server/src/routes/webhooks.ts` / `tickets.ts` — route definitions
 - `e2e/tickets.spec.ts` — E2E tests (webhook + list)
 

@@ -3,6 +3,8 @@ import prisma from "../lib/prisma";
 import {
   ticketQuerySchema,
   assignTicketSchema,
+  updateTicketSchema,
+  createReplySchema,
   ticketStatuses,
   ticketCategories,
 } from "core/schemas/ticket";
@@ -81,6 +83,14 @@ export async function getTicket(req: Request, res: Response) {
         assignedTo: {
           select: { id: true, name: true },
         },
+        replies: {
+          include: {
+            author: {
+              select: { id: true, name: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
     if (!ticket) {
@@ -91,6 +101,42 @@ export async function getTicket(req: Request, res: Response) {
     res.json({ ticket });
   } catch {
     res.status(500).json({ error: "Failed to fetch ticket" });
+  }
+}
+
+export async function updateTicket(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+
+    const parsed = updateTicketSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const existing = await prisma.ticket.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const ticket = await prisma.ticket.update({
+      where: { id },
+      data: parsed.data,
+      include: {
+        assignedTo: {
+          select: { id: true, name: true },
+        },
+        replies: {
+          include: { author: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    res.json({ ticket });
+  } catch {
+    res.status(500).json({ error: "Failed to update ticket" });
   }
 }
 
@@ -123,12 +169,52 @@ export async function assignTicket(req: Request, res: Response) {
         assignedTo: {
           select: { id: true, name: true },
         },
+        replies: {
+          include: { author: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
 
     res.json({ ticket });
   } catch {
     res.status(500).json({ error: "Failed to assign ticket" });
+  }
+}
+
+export async function createReply(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+
+    const parsed = createReplySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const reply = await prisma.ticketReply.create({
+      data: {
+        ticketId: id,
+        body: parsed.data.body,
+        senderType: "AGENT",
+        authorId: req.user!.id,
+      },
+      include: {
+        author: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    res.status(201).json({ reply });
+  } catch {
+    res.status(500).json({ error: "Failed to create reply" });
   }
 }
 
