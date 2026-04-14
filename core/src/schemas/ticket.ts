@@ -31,7 +31,14 @@ export const ticketFilterSchema = z.object({
   search: z.string().optional(),
 });
 
-export const ticketQuerySchema = ticketSortSchema.merge(ticketFilterSchema);
+export const ticketPaginationSchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(10),
+});
+
+export const ticketQuerySchema = ticketSortSchema
+  .merge(ticketFilterSchema)
+  .merge(ticketPaginationSchema);
 
 export type TicketQueryParams = z.infer<typeof ticketQuerySchema>;
 

@@ -6,8 +6,19 @@ import {
   flexRender,
   createColumnHelper,
   type SortingState,
+  type PaginationState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, X } from "lucide-react";
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 import api from "@/lib/api";
 import {
   ticketStatuses,
@@ -37,6 +48,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+const PAGE_SIZE = 10;
 
 function formatCategory(category: TicketCategory) {
   return category
@@ -60,7 +72,7 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
 function TicketsTableSkeleton() {
   return (
     <div className="flex flex-col gap-3">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {Array.from({ length: PAGE_SIZE }).map((_, i) => (
         <div key={i} className="flex items-center gap-4">
           <Skeleton className="h-4 w-48" />
           <Skeleton className="h-4 w-32" />
@@ -121,12 +133,16 @@ export default function TicketsPage() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: PAGE_SIZE,
+  });
   const [statusFilter, setStatusFilter] = useState<TicketStatus[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<TicketCategory[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
 
-  // Debounce the search input by 300ms
+  // Debounce search input by 300ms
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(timer);
@@ -134,36 +150,79 @@ export default function TicketsPage() {
 
   const sortBy = sorting[0]?.id ?? "createdAt";
   const sortOrder = sorting[0]?.desc === false ? "asc" : "desc";
-
   const hasActiveFilters =
     statusFilter.length > 0 || categoryFilter.length > 0 || search.length > 0;
 
+  // Reset to page 1 whenever filters, search, or sort change
+  function handleSortingChange(updater: Parameters<typeof setSorting>[0]) {
+    setSorting(updater);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }
+  function handleStatusFilter(next: TicketStatus[]) {
+    setStatusFilter(next);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }
+  function handleCategoryFilter(next: TicketCategory[]) {
+    setCategoryFilter(next);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }
+  function handleSearchInput(value: string) {
+    setSearchInput(value);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }
+
   const {
-    data: tickets = [],
+    data,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["tickets", sortBy, sortOrder, statusFilter, categoryFilter, search],
+    queryKey: [
+      "tickets",
+      sortBy,
+      sortOrder,
+      statusFilter,
+      categoryFilter,
+      search,
+      pagination.pageIndex,
+    ],
     queryFn: async () => {
-      const res = await api.get<{ tickets: Ticket[] }>("/api/tickets", {
+      const res = await api.get<{
+        tickets: Ticket[];
+        total: number;
+        page: number;
+        pageSize: number;
+      }>("/api/tickets", {
         params: {
           sortBy,
           sortOrder,
+          page: pagination.pageIndex + 1,
+          pageSize: pagination.pageSize,
           ...(statusFilter.length ? { status: statusFilter.join(",") } : {}),
           ...(categoryFilter.length ? { category: categoryFilter.join(",") } : {}),
           ...(search ? { search } : {}),
         },
       });
-      return res.data.tickets;
+      return res.data;
     },
   });
+
+  const tickets = data?.tickets ?? [];
+  const total = data?.total ?? 0;
+  const pageCount = Math.ceil(total / PAGE_SIZE);
+  const { pageIndex } = pagination;
+
+  const firstItem = total === 0 ? 0 : pageIndex * PAGE_SIZE + 1;
+  const lastItem = Math.min((pageIndex + 1) * PAGE_SIZE, total);
 
   const table = useReactTable({
     data: tickets,
     columns,
-    state: { sorting },
-    onSortingChange: setSorting,
+    state: { sorting, pagination },
+    onSortingChange: handleSortingChange,
+    onPaginationChange: setPagination,
     manualSorting: true,
+    manualPagination: true,
+    pageCount,
     getCoreRowModel: getCoreRowModel(),
   });
 
@@ -172,6 +231,7 @@ export default function TicketsPage() {
     setCategoryFilter([]);
     setSearchInput("");
     setSearch("");
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
   }
 
   return (
@@ -197,7 +257,7 @@ export default function TicketsPage() {
               <Input
                 placeholder="Search by subject or sender…"
                 value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                onChange={(e) => handleSearchInput(e.target.value)}
                 className="pl-9 max-w-sm"
               />
             </div>
@@ -213,7 +273,7 @@ export default function TicketsPage() {
                     variant={statusFilter.includes(s) ? "default" : "outline"}
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => setStatusFilter(toggle(statusFilter, s))}
+                    onClick={() => handleStatusFilter(toggle(statusFilter, s))}
                   >
                     {s.charAt(0) + s.slice(1).toLowerCase()}
                   </Button>
@@ -230,7 +290,7 @@ export default function TicketsPage() {
                     variant={categoryFilter.includes(c) ? "default" : "outline"}
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => setCategoryFilter(toggle(categoryFilter, c))}
+                    onClick={() => handleCategoryFilter(toggle(categoryFilter, c))}
                   >
                     {formatCategory(c)}
                   </Button>
@@ -260,44 +320,92 @@ export default function TicketsPage() {
                 : "No tickets found."}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="-ml-3 h-8 font-medium"
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
+            <>
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="-ml-3 h-8 font-medium"
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                            <SortIcon sorted={header.column.getIsSorted()} />
+                          </Button>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
                           {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
+                            cell.column.columnDef.cell,
+                            cell.getContext()
                           )}
-                          <SortIcon sorted={header.column.getIsSorted()} />
-                        </Button>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Pagination controls */}
+              <div className="flex items-center justify-between mt-4">
+                <p className="text-sm text-muted-foreground">
+                  {firstItem}–{lastItem} of {total} tickets
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.firstPage()}
+                    disabled={!table.getCanPreviousPage()}
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {pageIndex + 1} of {pageCount}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.lastPage()}
+                    disabled={!table.getCanNextPage()}
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -1,21 +1,37 @@
 import type { Request, Response } from "express";
 import prisma from "../lib/prisma";
-import { ticketQuerySchema } from "core/schemas/ticket";
+import {
+  ticketQuerySchema,
+  ticketStatuses,
+  ticketCategories,
+} from "core/schemas/ticket";
 import type { TicketStatus, TicketCategory } from "core/schemas/ticket";
 
-const VALID_STATUSES = new Set<string>(["OPEN", "RESOLVED", "CLOSED"]);
-const VALID_CATEGORIES = new Set<string>([
-  "GENERAL_QUESTION",
-  "TECHNICAL_QUESTION",
-  "REFUND_REQUEST",
-]);
+const VALID_STATUSES = new Set<string>(ticketStatuses);
+const VALID_CATEGORIES = new Set<string>(ticketCategories);
 
 export async function getTickets(req: Request, res: Response) {
   try {
     const result = ticketQuerySchema.safeParse(req.query);
-    const { sortBy, sortOrder, status, category, search } = result.success
+    const {
+      sortBy,
+      sortOrder,
+      status,
+      category,
+      search,
+      page,
+      pageSize,
+    } = result.success
       ? result.data
-      : { sortBy: "createdAt" as const, sortOrder: "desc" as const, status: undefined, category: undefined, search: undefined };
+      : {
+          sortBy: "createdAt" as const,
+          sortOrder: "desc" as const,
+          status: undefined,
+          category: undefined,
+          search: undefined,
+          page: 1,
+          pageSize: 20,
+        };
 
     const statusList = status
       ? (status.split(",").filter((s) => VALID_STATUSES.has(s)) as TicketStatus[])
@@ -24,24 +40,31 @@ export async function getTickets(req: Request, res: Response) {
       ? (category.split(",").filter((c) => VALID_CATEGORIES.has(c)) as TicketCategory[])
       : [];
 
-    const tickets = await prisma.ticket.findMany({
-      where: {
-        ...(statusList.length ? { status: { in: statusList } } : {}),
-        ...(categoryList.length ? { category: { in: categoryList } } : {}),
-        ...(search
-          ? {
-              OR: [
-                { subject: { contains: search, mode: "insensitive" } },
-                { senderName: { contains: search, mode: "insensitive" } },
-                { senderEmail: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: { [sortBy]: sortOrder },
-    });
+    const where = {
+      ...(statusList.length ? { status: { in: statusList } } : {}),
+      ...(categoryList.length ? { category: { in: categoryList } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { subject: { contains: search, mode: "insensitive" as const } },
+              { senderName: { contains: search, mode: "insensitive" as const } },
+              { senderEmail: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
 
-    res.json({ tickets });
+    const [tickets, total] = await prisma.$transaction([
+      prisma.ticket.findMany({
+        where,
+        orderBy: { [sortBy]: sortOrder },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.ticket.count({ where }),
+    ]);
+
+    res.json({ tickets, total, page, pageSize });
   } catch {
     res.status(500).json({ error: "Failed to fetch tickets" });
   }
