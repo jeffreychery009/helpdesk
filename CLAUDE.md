@@ -109,6 +109,29 @@ Use the **context7** MCP server to fetch up-to-date documentation for any librar
 - Bun
 - Claude API / Anthropic SDK
 
+## Tickets
+
+Tickets are created from inbound emails. Fields: `subject`, `body`, `senderEmail`, `senderName`, `status` (`OPEN`/`RESOLVED`/`CLOSED`), `category` (`GENERAL_QUESTION`/`TECHNICAL_QUESTION`/`REFUND_REQUEST`), optional `assignedToId`, and `replies`.
+
+### API Routes
+
+- `POST /api/webhooks/inbound-email` — public, no auth; accepts `{ subject, body, senderEmail, senderName }`, creates a ticket; intended to be wired to an email provider (SendGrid/Mailgun) later
+- `GET /api/tickets` — requires auth; returns `{ tickets: [...] }` ordered by `createdAt desc`
+- `GET /api/tickets/:id` — requires auth; returns `{ ticket }` or 404
+
+### Key Files
+
+- `core/src/schemas/ticket.ts` — `inboundEmailSchema` (Zod)
+- `server/src/controllers/webhooks.ts` — `inboundEmail` handler
+- `server/src/controllers/tickets.ts` — `getTickets`, `getTicket` handlers
+- `server/src/routes/webhooks.ts` / `tickets.ts` — route definitions
+- `e2e/tickets.spec.ts` — E2E tests (webhook + list)
+
+### Conventions
+
+- Route params: use `req.params.id as string` (not destructuring) to satisfy TypeScript
+- Webhook endpoint is public — do **not** add `requireAuth` to `/api/webhooks/*`
+
 ## Key Files
 
 - `project-scope.md` — product requirements and feature list
