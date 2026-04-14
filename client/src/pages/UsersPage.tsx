@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Pencil } from "lucide-react";
 import api from "@/lib/api";
 import {
   Card,
@@ -19,7 +21,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import CreateUserDialog from "@/components/CreateUserDialog";
+import EditUserDialog from "@/components/EditUserDialog";
 
 interface User {
   id: string;
@@ -55,6 +59,8 @@ function UsersTableSkeleton() {
 }
 
 export default function UsersPage() {
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+
   const {
     data: users = [],
     isLoading,
@@ -100,6 +106,7 @@ export default function UsersPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead className="w-[60px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -130,6 +137,15 @@ export default function UsersPage() {
                     <TableCell className="text-muted-foreground">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setEditingUser(user)}
+                      >
+                        <Pencil />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -137,6 +153,14 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      <EditUserDialog
+        user={editingUser}
+        open={editingUser !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingUser(null);
+        }}
+      />
     </div>
   );
 }
