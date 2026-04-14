@@ -6,6 +6,7 @@ AI-powered ticket management system for support teams.
 
 - `client/` — React + TypeScript + Vite frontend
 - `server/` — Node.js + Express + TypeScript backend
+- `core/` — Shared Zod schemas and types used by both client and server
 - Monorepo managed with **Bun workspaces**
 
 ## Tech Stack
@@ -121,3 +122,7 @@ Use the **context7** MCP server to fetch up-to-date documentation for any librar
 - Client uses `@/` path alias (maps to `client/src/`)
 - UI components use shadcn/ui (base-nova style, neutral base color, Geist font)
 - shadcn components live in `client/src/components/ui/`
+- Use **Zod** for request body validation on both client and server
+  - Define schemas in `core/src/schemas/` and import from both client and server (e.g., `import { createUserSchema } from "core/schemas/user"`)
+  - Client: zod + `@hookform/resolvers/zod` with react-hook-form
+  - Server: `z.safeParse()` on `req.body`, return first issue message on failure with 400 status

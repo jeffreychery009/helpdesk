@@ -1,7 +1,7 @@
 {
   "name": "ticket-manager",
   "private": true,
-  "workspaces": ["client", "server"],
+  "workspaces": ["client", "server", "core"],
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "dev:client": "bun run --filter client dev",

@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import CreateUserDialog from "@/components/CreateUserDialog";
 
 interface User {
   id: string;
@@ -68,7 +69,10 @@ export default function UsersPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <h2 className="text-lg font-semibold text-foreground mb-4">Users</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-foreground">Users</h2>
+        <CreateUserDialog />
+      </div>
 
       {error && (
         <Alert variant="destructive" className="mb-4">
