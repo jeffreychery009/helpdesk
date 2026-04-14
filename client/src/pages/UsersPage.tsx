@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
 import api from "@/lib/api";
 import {
   Card,
@@ -22,6 +24,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import CreateUserDialog from "@/components/CreateUserDialog";
 import EditUserDialog from "@/components/EditUserDialog";
 
@@ -60,6 +72,8 @@ function UsersTableSkeleton() {
 
 export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const queryClient = useQueryClient();
 
   const {
     data: users = [],
@@ -70,6 +84,25 @@ export default function UsersPage() {
     queryFn: async () => {
       const res = await api.get<{ users: User[] }>("/api/users");
       return res.data.users;
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/users/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success(`${deletingUser?.name} has been deleted`);
+      setDeletingUser(null);
+    },
+    onError: (error: unknown) => {
+      let message = "Failed to delete user";
+      if (error instanceof AxiosError && error.response?.data?.error) {
+        message = error.response.data.error;
+      }
+      toast.error(message);
+      setDeletingUser(null);
     },
   });
 
@@ -138,13 +171,24 @@ export default function UsersPage() {
                       {new Date(user.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setEditingUser(user)}
-                      >
-                        <Pencil />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setEditingUser(user)}
+                        >
+                          <Pencil />
+                        </Button>
+                        {user.role !== "ADMIN" && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setDeletingUser(user)}
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -161,6 +205,35 @@ export default function UsersPage() {
           if (!open) setEditingUser(null);
         }}
       />
+
+      <AlertDialog
+        open={deletingUser !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingUser(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {deletingUser?.name}? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (deletingUser) deleteMutation.mutate(deletingUser.id);
+              }}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

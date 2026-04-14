@@ -7,6 +7,7 @@ import prisma from "../lib/prisma";
 export async function getUsers(_req: Request, res: Response) {
   try {
     const users = await prisma.user.findMany({
+      where: { deletedAt: null },
       select: {
         id: true,
         name: true,
@@ -118,5 +119,34 @@ export async function updateUser(req: Request, res: Response) {
     res.json({ user });
   } catch {
     res.status(500).json({ error: "Failed to update user" });
+  }
+}
+
+export async function deleteUser(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    if (user.role === "ADMIN") {
+      res.status(403).json({ error: "Admin users cannot be deleted" });
+      return;
+    }
+
+    await prisma.$transaction([
+      prisma.session.deleteMany({ where: { userId: id } }),
+      prisma.user.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      }),
+    ]);
+
+    res.json({ message: "User deleted" });
+  } catch {
+    res.status(500).json({ error: "Failed to delete user" });
   }
 }

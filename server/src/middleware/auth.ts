@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { auth } from "../lib/auth";
+import prisma from "../lib/prisma";
 
 type Session = typeof auth.$Infer.Session;
 
@@ -22,6 +23,16 @@ export async function requireAuth(
   });
 
   if (!session) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { deletedAt: true },
+  });
+
+  if (user?.deletedAt) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
