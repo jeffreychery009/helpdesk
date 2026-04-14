@@ -9,13 +9,6 @@ const API_BASE = "http://localhost:3001/api";
 const ADMIN_EMAIL = "testadmin@example.com";
 const ADMIN_PASSWORD = "TestPassword123!";
 
-const WEBHOOK_PAYLOAD = {
-  subject: "E2E Test Ticket",
-  body: "This is a test ticket created by the E2E suite.",
-  senderEmail: "e2e-sender@example.com",
-  senderName: "E2E Sender",
-};
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -54,64 +47,123 @@ async function getAdminSessionCookie(
 // Tests — Webhook endpoint (no auth required)
 // ---------------------------------------------------------------------------
 
+// A valid baseline payload reused across tests. Each test that mutates fields
+// spreads a fresh copy so tests remain independent.
+const VALID_PAYLOAD = {
+  subject: "Test ticket subject",
+  body: "Test ticket body",
+  senderEmail: "sender@example.com",
+  senderName: "Test Sender",
+} as const;
+
 test.describe("POST /api/webhooks/inbound-email", () => {
-  test("returns 200 and a ticket object for a valid payload", async ({
+  test("creates a ticket and returns all fields with correct defaults", async ({
     request,
   }) => {
-    const response = await request.post(
-      `${API_BASE}/webhooks/inbound-email`,
-      { data: WEBHOOK_PAYLOAD }
-    );
+    const response = await request.post(`${API_BASE}/webhooks/inbound-email`, {
+      data: { ...VALID_PAYLOAD },
+    });
 
     expect(response.status()).toBe(200);
 
-    const body = await response.json();
-    expect(body).toHaveProperty("ticket");
+    const { ticket } = await response.json();
 
-    const { ticket } = body;
+    // Echoed input fields
     expect(ticket).toMatchObject({
-      subject: WEBHOOK_PAYLOAD.subject,
-      senderEmail: WEBHOOK_PAYLOAD.senderEmail,
-      senderName: WEBHOOK_PAYLOAD.senderName,
-      body: WEBHOOK_PAYLOAD.body,
-      status: expect.any(String),
+      subject: VALID_PAYLOAD.subject,
+      body: VALID_PAYLOAD.body,
+      senderEmail: VALID_PAYLOAD.senderEmail,
+      senderName: VALID_PAYLOAD.senderName,
     });
-    expect(ticket.id).toBeTruthy();
-    expect(ticket.createdAt).toBeTruthy();
-    expect(ticket.updatedAt).toBeTruthy();
+
+    // Server-generated fields
+    expect(typeof ticket.id).toBe("string");
+    expect(ticket.id.length).toBeGreaterThan(0);
+    expect(typeof ticket.createdAt).toBe("string");
+    expect(typeof ticket.updatedAt).toBe("string");
+
+    // Default values
+    expect(ticket.status).toBe("OPEN");
+    expect(ticket.category).toBe("GENERAL_QUESTION");
+    expect(ticket.assignedToId).toBeNull();
   });
 
-  test("returns 400 when senderEmail is missing", async ({ request }) => {
-    const { senderEmail: _omitted, ...payloadWithoutEmail } = WEBHOOK_PAYLOAD;
+  // Missing required fields — each omission should yield a 400 with the
+  // exact Zod error message defined in core/src/schemas/ticket.ts.
+  // When a field is absent entirely, Zod produces a type-level error before
+  // reaching the custom min/email messages.
+  const MISSING_FIELD_ERROR = "Invalid input: expected string, received undefined";
 
-    const response = await request.post(
-      `${API_BASE}/webhooks/inbound-email`,
-      { data: payloadWithoutEmail }
-    );
+  const missingFieldCases: Array<[string, Record<string, string>, string]> = [
+    [
+      "subject is missing",
+      { body: VALID_PAYLOAD.body, senderEmail: VALID_PAYLOAD.senderEmail, senderName: VALID_PAYLOAD.senderName },
+      MISSING_FIELD_ERROR,
+    ],
+    [
+      "body is missing",
+      { subject: VALID_PAYLOAD.subject, senderEmail: VALID_PAYLOAD.senderEmail, senderName: VALID_PAYLOAD.senderName },
+      MISSING_FIELD_ERROR,
+    ],
+    [
+      "senderEmail is missing",
+      { subject: VALID_PAYLOAD.subject, body: VALID_PAYLOAD.body, senderName: VALID_PAYLOAD.senderName },
+      MISSING_FIELD_ERROR,
+    ],
+    [
+      "senderName is missing",
+      { subject: VALID_PAYLOAD.subject, body: VALID_PAYLOAD.body, senderEmail: VALID_PAYLOAD.senderEmail },
+      MISSING_FIELD_ERROR,
+    ],
+  ];
 
-    expect(response.status()).toBe(400);
+  for (const [description, payload, expectedError] of missingFieldCases) {
+    test(`returns 400 when ${description}`, async ({ request }) => {
+      const response = await request.post(`${API_BASE}/webhooks/inbound-email`, {
+        data: payload,
+      });
 
-    const body = await response.json();
-    expect(body).toHaveProperty("error");
-    expect(typeof body.error).toBe("string");
-    expect(body.error.length).toBeGreaterThan(0);
-  });
+      expect(response.status()).toBe(400);
+      const json = await response.json();
+      expect(json.error).toBe(expectedError);
+    });
+  }
 
-  test("returns 400 when body field is missing", async ({ request }) => {
-    const { body: _omitted, ...payloadWithoutBody } = WEBHOOK_PAYLOAD;
+  // Invalid field values — present but failing Zod validation.
+  const invalidValueCases: Array<[string, Record<string, string>, string]> = [
+    [
+      "subject is an empty string",
+      { ...VALID_PAYLOAD, subject: "" },
+      "Subject is required",
+    ],
+    [
+      "body is an empty string",
+      { ...VALID_PAYLOAD, body: "" },
+      "Body is required",
+    ],
+    [
+      "senderEmail is not a valid email address",
+      { ...VALID_PAYLOAD, senderEmail: "not-an-email" },
+      "Invalid sender email",
+    ],
+    [
+      "senderName is an empty string",
+      { ...VALID_PAYLOAD, senderName: "" },
+      "Sender name is required",
+    ],
+  ];
 
-    const response = await request.post(
-      `${API_BASE}/webhooks/inbound-email`,
-      { data: payloadWithoutBody }
-    );
+  for (const [description, payload, expectedError] of invalidValueCases) {
+    test(`returns 400 when ${description}`, async ({ request }) => {
+      const response = await request.post(`${API_BASE}/webhooks/inbound-email`, {
+        data: payload,
+      });
 
-    expect(response.status()).toBe(400);
-
-    const responseBody = await response.json();
-    expect(responseBody).toHaveProperty("error");
-    expect(typeof responseBody.error).toBe("string");
-    expect(responseBody.error.length).toBeGreaterThan(0);
-  });
+      expect(response.status()).toBe(400);
+      const json = await response.json();
+      expect(json.error).toBe(expectedError);
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------
