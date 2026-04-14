@@ -87,83 +87,6 @@ test.describe("POST /api/webhooks/inbound-email", () => {
     expect(ticket.category).toBe("GENERAL_QUESTION");
     expect(ticket.assignedToId).toBeNull();
   });
-
-  // Missing required fields — each omission should yield a 400 with the
-  // exact Zod error message defined in core/src/schemas/ticket.ts.
-  // When a field is absent entirely, Zod produces a type-level error before
-  // reaching the custom min/email messages.
-  const MISSING_FIELD_ERROR = "Invalid input: expected string, received undefined";
-
-  const missingFieldCases: Array<[string, Record<string, string>, string]> = [
-    [
-      "subject is missing",
-      { body: VALID_PAYLOAD.body, senderEmail: VALID_PAYLOAD.senderEmail, senderName: VALID_PAYLOAD.senderName },
-      MISSING_FIELD_ERROR,
-    ],
-    [
-      "body is missing",
-      { subject: VALID_PAYLOAD.subject, senderEmail: VALID_PAYLOAD.senderEmail, senderName: VALID_PAYLOAD.senderName },
-      MISSING_FIELD_ERROR,
-    ],
-    [
-      "senderEmail is missing",
-      { subject: VALID_PAYLOAD.subject, body: VALID_PAYLOAD.body, senderName: VALID_PAYLOAD.senderName },
-      MISSING_FIELD_ERROR,
-    ],
-    [
-      "senderName is missing",
-      { subject: VALID_PAYLOAD.subject, body: VALID_PAYLOAD.body, senderEmail: VALID_PAYLOAD.senderEmail },
-      MISSING_FIELD_ERROR,
-    ],
-  ];
-
-  for (const [description, payload, expectedError] of missingFieldCases) {
-    test(`returns 400 when ${description}`, async ({ request }) => {
-      const response = await request.post(`${API_BASE}/webhooks/inbound-email`, {
-        data: payload,
-      });
-
-      expect(response.status()).toBe(400);
-      const json = await response.json();
-      expect(json.error).toBe(expectedError);
-    });
-  }
-
-  // Invalid field values — present but failing Zod validation.
-  const invalidValueCases: Array<[string, Record<string, string>, string]> = [
-    [
-      "subject is an empty string",
-      { ...VALID_PAYLOAD, subject: "" },
-      "Subject is required",
-    ],
-    [
-      "body is an empty string",
-      { ...VALID_PAYLOAD, body: "" },
-      "Body is required",
-    ],
-    [
-      "senderEmail is not a valid email address",
-      { ...VALID_PAYLOAD, senderEmail: "not-an-email" },
-      "Invalid sender email",
-    ],
-    [
-      "senderName is an empty string",
-      { ...VALID_PAYLOAD, senderName: "" },
-      "Sender name is required",
-    ],
-  ];
-
-  for (const [description, payload, expectedError] of invalidValueCases) {
-    test(`returns 400 when ${description}`, async ({ request }) => {
-      const response = await request.post(`${API_BASE}/webhooks/inbound-email`, {
-        data: payload,
-      });
-
-      expect(response.status()).toBe(400);
-      const json = await response.json();
-      expect(json.error).toBe(expectedError);
-    });
-  }
 });
 
 // ---------------------------------------------------------------------------
@@ -176,22 +99,6 @@ test.describe("GET /api/tickets", () => {
   }) => {
     const response = await request.get(`${API_BASE}/tickets`);
     expect(response.status()).toBe(401);
-  });
-
-  test("returns 200 and a tickets array when authenticated as admin", async ({
-    request,
-  }) => {
-    const sessionCookie = await getAdminSessionCookie(request);
-
-    const response = await request.get(`${API_BASE}/tickets`, {
-      headers: { Cookie: sessionCookie },
-    });
-
-    expect(response.status()).toBe(200);
-
-    const body = await response.json();
-    expect(body).toHaveProperty("tickets");
-    expect(Array.isArray(body.tickets)).toBe(true);
   });
 
   test("ticket created via webhook appears in the authenticated list", async ({

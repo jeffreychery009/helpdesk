@@ -1,10 +1,16 @@
 import type { Request, Response } from "express";
 import prisma from "../lib/prisma";
+import { ticketSortSchema } from "core/schemas/ticket";
 
-export async function getTickets(_req: Request, res: Response) {
+export async function getTickets(req: Request, res: Response) {
   try {
+    const result = ticketSortSchema.safeParse(req.query);
+    const { sortBy, sortOrder } = result.success
+      ? result.data
+      : { sortBy: "createdAt" as const, sortOrder: "desc" as const };
+
     const tickets = await prisma.ticket.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: { [sortBy]: sortOrder },
     });
 
     res.json({ tickets });

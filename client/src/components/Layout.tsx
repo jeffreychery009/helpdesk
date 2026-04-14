@@ -21,6 +21,12 @@ export default function Layout() {
           >
             Ticket Manager
           </Link>
+          <Link
+            to="/tickets"
+            className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
+            Tickets
+          </Link>
           {session?.user?.role === "ADMIN" && (
             <Link
               to="/users"

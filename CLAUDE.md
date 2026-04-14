@@ -100,6 +100,8 @@ Component tests use **Vitest** + **React Testing Library** with jsdom.
 
 E2E tests use Playwright with a separate test database (`helpdesk_test`). Use the **e2e-test-writer** agent for all test writing, updating, and debugging. Do not write e2e tests directly — always delegate to the agent.
 
+**When to use E2E:** Critical UI + server integration paths only — full auth flows, multi-step user journeys that require a real browser and server. For everything else (individual components, form validation, utilities), use component or unit tests instead.
+
 ## Documentation
 
 Use the **context7** MCP server to fetch up-to-date documentation for any library or framework used in this project. Always prefer context7 over relying on training data, especially for:
@@ -121,7 +123,7 @@ Tickets are created from inbound emails. Fields: `subject`, `body`, `senderEmail
 
 ### Key Files
 
-- `core/src/schemas/ticket.ts` — `inboundEmailSchema` (Zod)
+- `core/src/schemas/ticket.ts` — `inboundEmailSchema` (Zod), `ticketSchema`, `Ticket` type, `TicketStatus` and `TicketCategory` union types
 - `server/src/controllers/webhooks.ts` — `inboundEmail` handler
 - `server/src/controllers/tickets.ts` — `getTickets`, `getTicket` handlers
 - `server/src/routes/webhooks.ts` / `tickets.ts` — route definitions
@@ -131,6 +133,7 @@ Tickets are created from inbound emails. Fields: `subject`, `body`, `senderEmail
 
 - Route params: use `req.params.id as string` (not destructuring) to satisfy TypeScript
 - Webhook endpoint is public — do **not** add `requireAuth` to `/api/webhooks/*`
+- `TicketStatus` and `TicketCategory` are plain TypeScript union types (not const enums) — use string literals when comparing (e.g. `status === "OPEN"`)
 
 ## Key Files
 
