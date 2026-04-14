@@ -19,6 +19,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import api from "@/lib/api";
 import {
   ticketStatuses,
@@ -90,7 +91,14 @@ const columnHelper = createColumnHelper<Ticket>();
 const columns = [
   columnHelper.accessor("subject", {
     header: "Subject",
-    cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+    cell: (info) => (
+      <Link
+        to={`/tickets/${info.row.original.id}`}
+        className="font-medium hover:underline text-primary"
+      >
+        {info.getValue()}
+      </Link>
+    ),
   }),
   columnHelper.accessor("senderName", {
     header: "Sender",
