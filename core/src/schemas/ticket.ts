@@ -24,14 +24,28 @@ export const ticketSortSchema = z.object({
 
 export type TicketSortParams = z.infer<typeof ticketSortSchema>;
 
+export const ticketFilterSchema = z.object({
+  // Comma-separated lists, e.g. "OPEN,RESOLVED"
+  status: z.string().optional(),
+  category: z.string().optional(),
+  search: z.string().optional(),
+});
+
+export const ticketQuerySchema = ticketSortSchema.merge(ticketFilterSchema);
+
+export type TicketQueryParams = z.infer<typeof ticketQuerySchema>;
+
 export type InboundEmailPayload = z.infer<typeof inboundEmailSchema>;
 
-export type TicketStatus = "OPEN" | "RESOLVED" | "CLOSED";
+export const ticketStatuses = ["OPEN", "RESOLVED", "CLOSED"] as const;
+export const ticketCategories = [
+  "GENERAL_QUESTION",
+  "TECHNICAL_QUESTION",
+  "REFUND_REQUEST",
+] as const;
 
-export type TicketCategory =
-  | "GENERAL_QUESTION"
-  | "TECHNICAL_QUESTION"
-  | "REFUND_REQUEST";
+export type TicketStatus = (typeof ticketStatuses)[number];
+export type TicketCategory = (typeof ticketCategories)[number];
 
 export const ticketSchema = z.object({
   id: z.string(),
@@ -39,8 +53,8 @@ export const ticketSchema = z.object({
   body: z.string(),
   senderName: z.string(),
   senderEmail: z.string(),
-  status: z.enum(["OPEN", "RESOLVED", "CLOSED"]),
-  category: z.enum(["GENERAL_QUESTION", "TECHNICAL_QUESTION", "REFUND_REQUEST"]),
+  status: z.enum(ticketStatuses),
+  category: z.enum(ticketCategories),
   assignedToId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),

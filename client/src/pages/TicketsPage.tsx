@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   useReactTable,
@@ -7,9 +7,15 @@ import {
   createColumnHelper,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, X } from "lucide-react";
 import api from "@/lib/api";
-import type { Ticket, TicketStatus, TicketCategory } from "core/schemas/ticket";
+import {
+  ticketStatuses,
+  ticketCategories,
+  type Ticket,
+  type TicketStatus,
+  type TicketCategory,
+} from "core/schemas/ticket";
 import {
   Card,
   CardContent,
@@ -29,6 +35,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
 
 function formatCategory(category: TicketCategory) {
   return category
@@ -70,9 +78,7 @@ const columnHelper = createColumnHelper<Ticket>();
 const columns = [
   columnHelper.accessor("subject", {
     header: "Subject",
-    cell: (info) => (
-      <span className="font-medium">{info.getValue()}</span>
-    ),
+    cell: (info) => <span className="font-medium">{info.getValue()}</span>,
   }),
   columnHelper.accessor("senderName", {
     header: "Sender",
@@ -107,23 +113,46 @@ const columns = [
   }),
 ];
 
+function toggle<T>(set: T[], value: T): T[] {
+  return set.includes(value) ? set.filter((v) => v !== value) : [...set, value];
+}
+
 export default function TicketsPage() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
+  const [statusFilter, setStatusFilter] = useState<TicketStatus[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<TicketCategory[]>([]);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+
+  // Debounce the search input by 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const sortBy = sorting[0]?.id ?? "createdAt";
   const sortOrder = sorting[0]?.desc === false ? "asc" : "desc";
+
+  const hasActiveFilters =
+    statusFilter.length > 0 || categoryFilter.length > 0 || search.length > 0;
 
   const {
     data: tickets = [],
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["tickets", sortBy, sortOrder],
+    queryKey: ["tickets", sortBy, sortOrder, statusFilter, categoryFilter, search],
     queryFn: async () => {
       const res = await api.get<{ tickets: Ticket[] }>("/api/tickets", {
-        params: { sortBy, sortOrder },
+        params: {
+          sortBy,
+          sortOrder,
+          ...(statusFilter.length ? { status: statusFilter.join(",") } : {}),
+          ...(categoryFilter.length ? { category: categoryFilter.join(",") } : {}),
+          ...(search ? { search } : {}),
+        },
       });
       return res.data.tickets;
     },
@@ -137,6 +166,13 @@ export default function TicketsPage() {
     manualSorting: true,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  function clearFilters() {
+    setStatusFilter([]);
+    setCategoryFilter([]);
+    setSearchInput("");
+    setSearch("");
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -154,10 +190,75 @@ export default function TicketsPage() {
           <CardDescription>Click a column header to sort.</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Filter bar */}
+          <div className="flex flex-col gap-3 mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by subject or sender…"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-9 max-w-sm"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Status
+                </span>
+                {ticketStatuses.map((s) => (
+                  <Button
+                    key={s}
+                    variant={statusFilter.includes(s) ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setStatusFilter(toggle(statusFilter, s))}
+                  >
+                    {s.charAt(0) + s.slice(1).toLowerCase()}
+                  </Button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Category
+                </span>
+                {ticketCategories.map((c) => (
+                  <Button
+                    key={c}
+                    variant={categoryFilter.includes(c) ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setCategoryFilter(toggle(categoryFilter, c))}
+                  >
+                    {formatCategory(c)}
+                  </Button>
+                ))}
+              </div>
+
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-muted-foreground"
+                  onClick={clearFilters}
+                >
+                  <X className="mr-1 h-3 w-3" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+
           {isLoading ? (
             <TicketsTableSkeleton />
           ) : tickets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tickets found.</p>
+            <p className="text-sm text-muted-foreground">
+              {hasActiveFilters
+                ? "No tickets match your filters."
+                : "No tickets found."}
+            </p>
           ) : (
             <Table>
               <TableHeader>
