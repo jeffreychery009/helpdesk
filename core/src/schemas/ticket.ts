@@ -85,6 +85,10 @@ export const createReplySchema = z.object({
   body: z.string().min(1, "Reply body is required"),
 });
 
+export const polishReplySchema = z.object({
+  body: z.string().min(1, "Reply body is required"),
+});
+
 export type TicketReply = {
   id: string;
   body: string;

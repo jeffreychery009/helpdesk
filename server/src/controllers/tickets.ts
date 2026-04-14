@@ -1,10 +1,13 @@
 import type { Request, Response } from "express";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
 import prisma from "../lib/prisma";
 import {
   ticketQuerySchema,
   assignTicketSchema,
   updateTicketSchema,
   createReplySchema,
+  polishReplySchema,
   ticketStatuses,
   ticketCategories,
 } from "core/schemas/ticket";
@@ -215,6 +218,49 @@ export async function createReply(req: Request, res: Response) {
     res.status(201).json({ reply });
   } catch {
     res.status(500).json({ error: "Failed to create reply" });
+  }
+}
+
+export async function polishReply(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+
+    const parsed = polishReplySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const agentName = req.user!.name;
+
+    const { text } = await generateText({
+      model: openai("gpt-4.1-nano"),
+      system:
+        "You are a helpful assistant that polishes customer support replies. " +
+        "Improve the tone, grammar, and clarity of the agent's draft while preserving the original meaning. " +
+        "Keep the reply concise and professional. " +
+        "Address the customer by their name at the start of the reply. " +
+        "End the reply with a sign-off using the agent's name and the domain https://jeffreychery.com. " +
+        "For example:\n\nHi Sarah,\n\n...\n\nBest regards,\n\nJohn\n\nhttps://jeffreychery.com\n\n" +
+        "Return only the polished reply text, nothing else.",
+      prompt:
+        `Ticket subject: ${ticket.subject}\n` +
+        `Customer message: ${ticket.body}\n` +
+        `Customer name: ${ticket.senderName}\n\n` +
+        `Agent name: ${agentName}\n\n` +
+        `Agent's draft reply:\n${parsed.data.body}`,
+    });
+
+    res.json({ polished: text });
+  } catch (err) {
+    console.error("Polish reply error:", err);
+    res.status(500).json({ error: "Failed to polish reply" });
   }
 }
 

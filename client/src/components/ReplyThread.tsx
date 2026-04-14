@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
 import api from "@/lib/api";
 import type { TicketReply } from "core/schemas/ticket";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 
 interface ReplyThreadProps {
@@ -33,7 +34,26 @@ export default function ReplyThread({ ticketId, senderName, replies }: ReplyThre
     },
   });
 
-  function handleSubmitReply(e: React.FormEvent) {
+  const polishMutation = useMutation({
+    mutationFn: async (draft: string) => {
+      const res = await api.post<{ polished: string }>(
+        `/api/tickets/${ticketId}/polish-reply`,
+        { body: draft },
+      );
+      return res.data.polished;
+    },
+    onSuccess: (polished) => {
+      setReplyBody(polished);
+    },
+  });
+
+  function handlePolish() {
+    const trimmed = replyBody.trim();
+    if (!trimmed) return;
+    polishMutation.mutate(trimmed);
+  }
+
+  function handleSubmitReply(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const trimmed = replyBody.trim();
     if (!trimmed) return;
@@ -82,22 +102,45 @@ export default function ReplyThread({ ticketId, senderName, replies }: ReplyThre
         ))}
 
         <form onSubmit={handleSubmitReply} className="pt-4 border-t space-y-3">
-          <Textarea
-            placeholder="Write a reply..."
-            value={replyBody}
-            onChange={(e) => setReplyBody(e.target.value)}
-            rows={3}
-            disabled={replyMutation.isPending}
-          />
+          {polishMutation.isPending ? (
+            <div className="space-y-2 rounded-md border p-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-[90%]" />
+              <Skeleton className="h-4 w-[75%]" />
+            </div>
+          ) : (
+            <Textarea
+              placeholder="Write a reply..."
+              value={replyBody}
+              onChange={(e) => setReplyBody(e.target.value)}
+              rows={3}
+              disabled={replyMutation.isPending}
+            />
+          )}
+          {polishMutation.isError && (
+            <Alert variant="destructive">
+              <AlertDescription>Failed to polish reply. Please try again.</AlertDescription>
+            </Alert>
+          )}
           {replyMutation.isError && (
             <Alert variant="destructive">
               <AlertDescription>Failed to send reply. Please try again.</AlertDescription>
             </Alert>
           )}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={polishMutation.isPending || replyMutation.isPending || !replyBody.trim()}
+              onClick={handlePolish}
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              {polishMutation.isPending ? "Polishing..." : "Polish"}
+            </Button>
             <Button
               type="submit"
-              disabled={replyMutation.isPending || !replyBody.trim()}
+              disabled={replyMutation.isPending || polishMutation.isPending || !replyBody.trim()}
               size="sm"
             >
               <Send className="mr-2 h-4 w-4" />
