@@ -7,6 +7,8 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
 import { requireAuth } from "./middleware/auth";
 import prisma from "./lib/prisma";
+import boss from "./lib/queue";
+import { registerClassifyTicketWorker } from "./workers/classify-ticket";
 import routes from "./routes";
 
 // Validate required environment variables at startup
@@ -74,6 +76,17 @@ app.get("/api/health/me", requireAuth, (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+async function start() {
+  await boss.start();
+  await registerClassifyTicketWorker();
+  console.log("pg-boss started and workers registered");
+
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+start().catch((err) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
 });
