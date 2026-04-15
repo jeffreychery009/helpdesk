@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import api from "@/lib/api";
 import {
   ticketStatuses,
@@ -12,6 +13,7 @@ import {
 } from "core/schemas/ticket";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -39,6 +41,7 @@ function formatCategory(category: TicketCategory) {
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const [summary, setSummary] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["ticket", id],
@@ -79,6 +82,18 @@ export default function TicketDetailPage() {
     },
     onSuccess: (ticket) => {
       queryClient.setQueryData(["ticket", id], ticket);
+    },
+  });
+
+  const summarizeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post<{ summary: string }>(
+        `/api/tickets/${id}/summarize`,
+      );
+      return res.data.summary;
+    },
+    onSuccess: (text) => {
+      setSummary(text);
     },
   });
 
@@ -153,6 +168,7 @@ export default function TicketDetailPage() {
                       {data.body}
                     </div>
                   </div>
+
                 </div>
 
                 <div className="space-y-5 text-sm">
@@ -227,6 +243,35 @@ export default function TicketDetailPage() {
                     </Select>
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-10">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={summarizeMutation.isPending}
+                  onClick={() => summarizeMutation.mutate()}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {summarizeMutation.isPending ? "Summarizing..." : "Summarize"}
+                </Button>
+                {summarizeMutation.isPending && (
+                  <div className="mt-3 space-y-2 rounded-md border p-4">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-[85%]" />
+                    <Skeleton className="h-4 w-[70%]" />
+                  </div>
+                )}
+                {summary && !summarizeMutation.isPending && (
+                  <div className="mt-3 rounded-md border bg-muted/50 p-4 text-sm whitespace-pre-wrap">
+                    {summary}
+                  </div>
+                )}
+                {summarizeMutation.isError && (
+                  <Alert variant="destructive" className="mt-3">
+                    <AlertDescription>Failed to generate summary. Please try again.</AlertDescription>
+                  </Alert>
+                )}
               </div>
             </CardContent>
           </Card>

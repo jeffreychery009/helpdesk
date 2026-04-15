@@ -264,6 +264,62 @@ export async function polishReply(req: Request, res: Response) {
   }
 }
 
+export async function summarizeTicket(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id },
+      include: {
+        replies: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            author: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const conversationHistory = ticket.replies
+      .map((r) => {
+        const sender =
+          r.senderType === "AGENT"
+            ? (r.author?.name ?? "Agent")
+            : ticket.senderName;
+        return `${sender} (${r.senderType}): ${r.body}`;
+      })
+      .join("\n\n");
+
+    const { text } = await generateText({
+      model: openai("gpt-4.1-nano"),
+      system:
+        "You are a helpful assistant that summarizes customer support tickets. " +
+        "Provide a concise summary that covers: the customer's issue, any actions taken by the support team, " +
+        "and the current state of the conversation. " +
+        "Keep the summary to 2-4 sentences. Return only the summary text, nothing else.",
+      prompt:
+        `Ticket subject: ${ticket.subject}\n` +
+        `Category: ${ticket.category}\n` +
+        `Status: ${ticket.status}\n` +
+        `Customer: ${ticket.senderName} (${ticket.senderEmail})\n\n` +
+        `Original message:\n${ticket.body}\n\n` +
+        (conversationHistory
+          ? `Conversation history:\n${conversationHistory}`
+          : "No replies yet."),
+    });
+
+    res.json({ summary: text });
+  } catch (err) {
+    console.error("Summarize ticket error:", err);
+    res.status(500).json({ error: "Failed to summarize ticket" });
+  }
+}
+
 export async function getAssignees(_req: Request, res: Response) {
   try {
     const users = await prisma.user.findMany({
