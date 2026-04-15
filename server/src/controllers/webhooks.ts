@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { inboundEmailSchema } from "core/schemas/ticket";
 import prisma from "../lib/prisma";
 import { enqueueClassifyTicket } from "../workers/classify-ticket";
+import { enqueueAutoResolveTicket } from "../workers/auto-resolve-ticket";
 
 export async function inboundEmail(req: Request, res: Response) {
   try {
@@ -18,6 +19,12 @@ export async function inboundEmail(req: Request, res: Response) {
     });
 
     await enqueueClassifyTicket({
+      ticketId: ticket.id,
+      subject: ticket.subject,
+      body: ticket.body,
+    });
+
+    await enqueueAutoResolveTicket({
       ticketId: ticket.id,
       subject: ticket.subject,
       body: ticket.body,

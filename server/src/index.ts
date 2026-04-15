@@ -9,6 +9,7 @@ import { requireAuth } from "./middleware/auth";
 import prisma from "./lib/prisma";
 import boss from "./lib/queue";
 import { registerClassifyTicketWorker } from "./workers/classify-ticket";
+import { registerAutoResolveTicketWorker } from "./workers/auto-resolve-ticket";
 import routes from "./routes";
 
 // Validate required environment variables at startup
@@ -79,6 +80,7 @@ app.get("/api/health/me", requireAuth, (req, res) => {
 async function start() {
   await boss.start();
   await registerClassifyTicketWorker();
+  await registerAutoResolveTicketWorker();
   console.log("pg-boss started and workers registered");
 
   app.listen(PORT, () => {

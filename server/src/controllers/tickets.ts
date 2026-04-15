@@ -46,8 +46,14 @@ export async function getTickets(req: Request, res: Response) {
       ? (category.split(",").filter((c) => VALID_CATEGORIES.has(c)) as TicketCategory[])
       : [];
 
+    // Always exclude NEW/PROCESSING tickets; if user also filters by status, intersect
+    const hiddenStatuses: TicketStatus[] = ["NEW", "PROCESSING"];
+    const statusFilter = statusList.length
+      ? { status: { in: statusList.filter((s) => !hiddenStatuses.includes(s)) } }
+      : { status: { notIn: hiddenStatuses } };
+
     const where = {
-      ...(statusList.length ? { status: { in: statusList } } : {}),
+      ...statusFilter,
       ...(categoryList.length ? { category: { in: categoryList } } : {}),
       ...(search
         ? {

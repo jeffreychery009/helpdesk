@@ -44,7 +44,7 @@ export type TicketQueryParams = z.infer<typeof ticketQuerySchema>;
 
 export type InboundEmailPayload = z.infer<typeof inboundEmailSchema>;
 
-export const ticketStatuses = ["OPEN", "RESOLVED", "CLOSED"] as const;
+export const ticketStatuses = ["NEW", "PROCESSING", "OPEN", "RESOLVED", "CLOSED"] as const;
 export const ticketCategories = [
   "GENERAL_QUESTION",
   "TECHNICAL_QUESTION",

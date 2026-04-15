@@ -28,6 +28,10 @@ import {
   type TicketStatus,
   type TicketCategory,
 } from "core/schemas/ticket";
+
+const visibleStatuses = ticketStatuses.filter(
+  (s) => s !== "NEW" && s !== "PROCESSING",
+);
 import {
   Card,
   CardContent,
@@ -275,7 +279,7 @@ export default function TicketsPage() {
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Status
                 </span>
-                {ticketStatuses.map((s) => (
+                {visibleStatuses.map((s) => (
                   <Button
                     key={s}
                     variant={statusFilter.includes(s) ? "default" : "outline"}
