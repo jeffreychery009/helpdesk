@@ -18,15 +18,30 @@ export interface AutoResolveTicketData {
   body: string;
 }
 
+const AI_AGENT_EMAIL = "ai@system.internal";
+
+let aiAgentId: string | null = null;
+
+async function getAiAgentId(): Promise<string | null> {
+  if (aiAgentId) return aiAgentId;
+  const agent = await prisma.user.findUnique({
+    where: { email: AI_AGENT_EMAIL },
+    select: { id: true },
+  });
+  aiAgentId = agent?.id ?? null;
+  return aiAgentId;
+}
+
 export async function registerAutoResolveTicketWorker() {
   await boss.createQueue(QUEUE_NAME);
 
   await boss.work<AutoResolveTicketData>(QUEUE_NAME, async ([job]) => {
     const { ticketId, subject, body } = job.data;
+    const agentId = await getAiAgentId();
 
     await prisma.ticket.update({
       where: { id: ticketId },
-      data: { status: "PROCESSING" },
+      data: { status: "PROCESSING", assignedToId: agentId },
     });
 
     try {
@@ -55,7 +70,7 @@ export async function registerAutoResolveTicketWorker() {
       } catch {
         await prisma.ticket.update({
           where: { id: ticketId },
-          data: { status: "OPEN" },
+          data: { status: "OPEN", assignedToId: null },
         });
         return;
       }
@@ -64,7 +79,7 @@ export async function registerAutoResolveTicketWorker() {
         await prisma.$transaction([
           prisma.ticket.update({
             where: { id: ticketId },
-            data: { status: "RESOLVED" },
+            data: { status: "RESOLVED", resolvedAt: new Date() },
           }),
           prisma.ticketReply.create({
             data: {
@@ -79,14 +94,14 @@ export async function registerAutoResolveTicketWorker() {
       } else {
         await prisma.ticket.update({
           where: { id: ticketId },
-          data: { status: "OPEN" },
+          data: { status: "OPEN", assignedToId: null },
         });
       }
     } catch (err) {
       console.error("Auto-resolve ticket error:", err);
       await prisma.ticket.update({
         where: { id: ticketId },
-        data: { status: "OPEN" },
+        data: { status: "OPEN", assignedToId: null },
       });
     }
   });

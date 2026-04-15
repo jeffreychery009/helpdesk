@@ -19,30 +19,50 @@ async function seed() {
 
   if (existing) {
     console.log(`Admin user already exists: ${ADMIN_EMAIL}`);
-    return;
-  }
+  } else {
+    const hashed = await hashPassword(ADMIN_PASSWORD!);
 
-  const hashed = await hashPassword(ADMIN_PASSWORD!);
-
-  const user = await prisma.user.create({
-    data: {
-      id: crypto.randomUUID(),
-      name: "Admin",
-      email: ADMIN_EMAIL!,
-      emailVerified: true,
-      role: Role.ADMIN,
-      accounts: {
-        create: {
-          id: crypto.randomUUID(),
-          providerId: "credential",
-          accountId: ADMIN_EMAIL!,
-          password: hashed,
+    const user = await prisma.user.create({
+      data: {
+        id: crypto.randomUUID(),
+        name: "Admin",
+        email: ADMIN_EMAIL!,
+        emailVerified: true,
+        role: Role.ADMIN,
+        accounts: {
+          create: {
+            id: crypto.randomUUID(),
+            providerId: "credential",
+            accountId: ADMIN_EMAIL!,
+            password: hashed,
+          },
         },
       },
-    },
+    });
+
+    console.log(`Admin user created: ${user.email}`);
+  }
+
+  // Create AI agent user
+  const aiEmail = "ai@system.internal";
+  const existingAi = await prisma.user.findUnique({
+    where: { email: aiEmail },
   });
 
-  console.log(`Admin user created: ${user.email}`);
+  if (existingAi) {
+    console.log(`AI agent already exists: ${aiEmail}`);
+  } else {
+    const aiUser = await prisma.user.create({
+      data: {
+        id: crypto.randomUUID(),
+        name: "AI",
+        email: aiEmail,
+        emailVerified: true,
+        role: Role.AGENT,
+      },
+    });
+    console.log(`AI agent created: ${aiUser.email}`);
+  }
 }
 
 seed()

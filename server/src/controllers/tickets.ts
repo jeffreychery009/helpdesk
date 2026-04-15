@@ -129,9 +129,16 @@ export async function updateTicket(req: Request, res: Response) {
       return;
     }
 
+    const updateData: Record<string, unknown> = { ...parsed.data };
+    if (parsed.data.status === "RESOLVED" && existing.status !== "RESOLVED") {
+      updateData.resolvedAt = new Date();
+    } else if (parsed.data.status && parsed.data.status !== "RESOLVED" && existing.status === "RESOLVED") {
+      updateData.resolvedAt = null;
+    }
+
     const ticket = await prisma.ticket.update({
       where: { id },
-      data: parsed.data,
+      data: updateData,
       include: {
         assignedTo: {
           select: { id: true, name: true },

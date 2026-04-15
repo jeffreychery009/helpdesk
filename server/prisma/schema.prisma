@@ -111,6 +111,7 @@ model Ticket {
   replies      TicketReply[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+  resolvedAt   DateTime?
 
   @@map("ticket")
 }
