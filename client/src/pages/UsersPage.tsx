@@ -4,13 +4,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import api from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -108,8 +102,10 @@ export default function UsersPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground">Users</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-heading text-xl font-bold tracking-tight text-foreground">
+          Users
+        </h2>
         <CreateUserDialog />
       </div>
 
@@ -119,40 +115,43 @@ export default function UsersPage() {
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>
-            Manage team members and their roles.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <Card className="glass-card">
+        <CardContent className="pt-6">
           {isLoading ? (
             <UsersTableSkeleton />
           ) : users.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No users found.</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              No users found.
+            </p>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="w-[60px]">Actions</TableHead>
+                <TableRow className="border-border/50 hover:bg-transparent">
+                  <TableHead className="text-muted-foreground">User</TableHead>
+                  <TableHead className="text-muted-foreground">Email</TableHead>
+                  <TableHead className="text-muted-foreground">Role</TableHead>
+                  <TableHead className="text-muted-foreground">Created</TableHead>
+                  <TableHead className="w-[60px] text-muted-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
+                {users.map((user, i) => (
+                  <TableRow
+                    key={user.id}
+                    className={`border-border/30 transition-colors hover:bg-accent/50 ${
+                      i % 2 === 1 ? "bg-muted/20" : ""
+                    }`}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar size="sm">
-                          <AvatarFallback>
+                        <Avatar className="size-8 border border-border/50">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                             {getInitials(user.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{user.name}</span>
+                        <span className="font-medium text-foreground">
+                          {user.name}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
@@ -160,14 +159,17 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={
-                          user.role === "ADMIN" ? "default" : "secondary"
+                        variant={user.role === "ADMIN" ? "default" : "secondary"}
+                        className={
+                          user.role === "ADMIN"
+                            ? "bg-primary/15 text-primary border border-primary/30"
+                            : ""
                         }
                       >
                         {user.role}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground text-xs">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
@@ -176,6 +178,7 @@ export default function UsersPage() {
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => setEditingUser(user)}
+                          className="text-muted-foreground hover:text-foreground"
                         >
                           <Pencil />
                         </Button>
@@ -184,6 +187,7 @@ export default function UsersPage() {
                             variant="ghost"
                             size="icon-sm"
                             onClick={() => setDeletingUser(user)}
+                            className="text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 />
                           </Button>

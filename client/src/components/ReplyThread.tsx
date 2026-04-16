@@ -61,35 +61,47 @@ export default function ReplyThread({ ticketId, senderName, replies }: ReplyThre
   }
 
   return (
-    <Card className="mt-6">
+    <Card className="mt-6 glass-card">
       <CardHeader>
-        <CardTitle className="text-lg">Replies</CardTitle>
+        <CardTitle className="font-heading text-lg font-bold">Replies</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {replies.length === 0 && (
-          <p className="text-sm text-muted-foreground">No replies yet.</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No replies yet.
+          </p>
         )}
 
         {replies.map((reply) => (
           <div
             key={reply.id}
-            className={`rounded-md border p-4 ${
+            className={`rounded-lg border p-4 transition-colors ${
               reply.senderType === "AGENT"
-                ? "bg-muted/50 ml-8"
-                : "mr-8"
+                ? "border-primary/20 bg-primary/5 ml-8"
+                : "border-border/50 bg-background/50 mr-8"
             }`}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-foreground">
                 {reply.senderType === "AGENT"
                   ? (reply.author?.name ?? "Agent")
                   : senderName}
               </span>
-              <Badge variant="outline" className="text-xs">
+              <Badge
+                variant="outline"
+                className={`text-xs ${
+                  reply.senderType === "AGENT"
+                    ? "border-primary/30 text-primary"
+                    : "border-border/50"
+                }`}
+              >
                 {reply.senderType === "AGENT" ? "Agent" : "Customer"}
               </Badge>
               {reply.isAiGenerated && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge
+                  variant="secondary"
+                  className="text-xs bg-chart-5/15 text-chart-5 border border-chart-5/30"
+                >
                   AI
                 </Badge>
               )}
@@ -97,13 +109,13 @@ export default function ReplyThread({ ticketId, senderName, replies }: ReplyThre
                 {new Date(reply.createdAt).toLocaleString()}
               </span>
             </div>
-            <p className="text-sm whitespace-pre-wrap">{reply.body}</p>
+            <p className="text-sm whitespace-pre-wrap leading-relaxed">{reply.body}</p>
           </div>
         ))}
 
-        <form onSubmit={handleSubmitReply} className="pt-4 border-t space-y-3">
+        <form onSubmit={handleSubmitReply} className="pt-4 border-t border-border/30 space-y-3">
           {polishMutation.isPending ? (
-            <div className="space-y-2 rounded-md border p-3">
+            <div className="space-y-2 rounded-lg border border-border/50 bg-background/50 p-3">
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-[90%]" />
               <Skeleton className="h-4 w-[75%]" />
@@ -115,6 +127,7 @@ export default function ReplyThread({ ticketId, senderName, replies }: ReplyThre
               onChange={(e) => setReplyBody(e.target.value)}
               rows={3}
               disabled={replyMutation.isPending}
+              className="bg-background/50 border-border/50 focus:border-primary/50"
             />
           )}
           {polishMutation.isError && (
@@ -134,6 +147,7 @@ export default function ReplyThread({ ticketId, senderName, replies }: ReplyThre
               size="sm"
               disabled={polishMutation.isPending || replyMutation.isPending || !replyBody.trim()}
               onClick={handlePolish}
+              className="border-chart-5/30 text-chart-5 hover:bg-chart-5/10"
             >
               <Sparkles className="mr-2 h-4 w-4" />
               {polishMutation.isPending ? "Polishing..." : "Polish"}
@@ -142,6 +156,7 @@ export default function ReplyThread({ ticketId, senderName, replies }: ReplyThre
               type="submit"
               disabled={replyMutation.isPending || polishMutation.isPending || !replyBody.trim()}
               size="sm"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 glow-blue-sm"
             >
               <Send className="mr-2 h-4 w-4" />
               {replyMutation.isPending ? "Sending..." : "Send Reply"}

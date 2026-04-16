@@ -32,13 +32,7 @@ import {
 const visibleStatuses = ticketStatuses.filter(
   (s) => s !== "NEW" && s !== "PROCESSING",
 );
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -62,16 +56,26 @@ function formatCategory(category: TicketCategory) {
     .join(" ");
 }
 
-function statusVariant(status: TicketStatus) {
-  if (status === "OPEN") return "default" as const;
-  if (status === "RESOLVED") return "secondary" as const;
-  return "outline" as const;
+function StatusBadge({ status }: { status: TicketStatus }) {
+  const dotColor =
+    status === "OPEN"
+      ? "bg-warning"
+      : status === "RESOLVED"
+        ? "bg-success"
+        : "bg-muted-foreground";
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
+      <span className={`size-1.5 rounded-full ${dotColor}`} />
+      {status.charAt(0) + status.slice(1).toLowerCase()}
+    </span>
+  );
 }
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   if (sorted === "asc") return <ArrowUp className="ml-2 h-4 w-4" />;
   if (sorted === "desc") return <ArrowDown className="ml-2 h-4 w-4" />;
-  return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
+  return <ArrowUpDown className="ml-2 h-4 w-4 opacity-30" />;
 }
 
 function TicketsTableSkeleton() {
@@ -98,7 +102,7 @@ const columns = [
     cell: (info) => (
       <Link
         to={`/tickets/${info.row.original.id}`}
-        className="font-medium hover:underline text-primary"
+        className="font-medium text-primary hover:text-primary/80 transition-colors"
       >
         {info.getValue()}
       </Link>
@@ -108,7 +112,7 @@ const columns = [
     header: "Sender",
     cell: (info) => (
       <div className="flex flex-col">
-        <span>{info.getValue()}</span>
+        <span className="text-foreground">{info.getValue()}</span>
         <span className="text-xs text-muted-foreground">
           {info.row.original.senderEmail}
         </span>
@@ -118,19 +122,19 @@ const columns = [
   columnHelper.accessor("category", {
     header: "Category",
     cell: (info) => (
-      <Badge variant="secondary">{formatCategory(info.getValue())}</Badge>
+      <Badge variant="secondary" className="font-normal">
+        {formatCategory(info.getValue())}
+      </Badge>
     ),
   }),
   columnHelper.accessor("status", {
     header: "Status",
-    cell: (info) => (
-      <Badge variant={statusVariant(info.getValue())}>{info.getValue()}</Badge>
-    ),
+    cell: (info) => <StatusBadge status={info.getValue()} />,
   }),
   columnHelper.accessor("createdAt", {
     header: "Created",
     cell: (info) => (
-      <span className="text-muted-foreground">
+      <span className="text-muted-foreground text-xs">
         {new Date(info.getValue()).toLocaleDateString()}
       </span>
     ),
@@ -154,7 +158,6 @@ export default function TicketsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
 
-  // Debounce search input by 300ms
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(timer);
@@ -165,7 +168,6 @@ export default function TicketsPage() {
   const hasActiveFilters =
     statusFilter.length > 0 || categoryFilter.length > 0 || search.length > 0;
 
-  // Reset to page 1 whenever filters, search, or sort change
   function handleSortingChange(updater: Parameters<typeof setSorting>[0]) {
     setSorting(updater);
     setPagination((p) => ({ ...p, pageIndex: 0 }));
@@ -246,7 +248,9 @@ export default function TicketsPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <h2 className="text-lg font-semibold text-foreground mb-4">Tickets</h2>
+      <h2 className="font-heading text-xl font-bold tracking-tight text-foreground mb-6">
+        Tickets
+      </h2>
 
       {error && (
         <Alert variant="destructive" className="mb-4">
@@ -254,27 +258,23 @@ export default function TicketsPage() {
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Tickets</CardTitle>
-          <CardDescription>Click a column header to sort.</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <Card className="glass-card">
+        <CardContent className="pt-6">
           {/* Filter bar */}
-          <div className="flex flex-col gap-3 mb-4">
+          <div className="flex flex-col gap-3 mb-5">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by subject or sender…"
+                placeholder="Search by subject or sender..."
                 value={searchInput}
                 onChange={(e) => handleSearchInput(e.target.value)}
-                className="pl-9 max-w-sm"
+                className="pl-9 max-w-sm bg-background/50 border-border/50 focus:border-primary/50"
               />
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
                   Status
                 </span>
                 {visibleStatuses.map((s) => (
@@ -282,7 +282,11 @@ export default function TicketsPage() {
                     key={s}
                     variant={statusFilter.includes(s) ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs"
+                    className={`h-7 text-xs ${
+                      statusFilter.includes(s)
+                        ? "bg-primary/15 text-primary border-primary/30 hover:bg-primary/20"
+                        : "border-border/50"
+                    }`}
                     onClick={() => handleStatusFilter(toggle(statusFilter, s))}
                   >
                     {s.charAt(0) + s.slice(1).toLowerCase()}
@@ -291,7 +295,7 @@ export default function TicketsPage() {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
                   Category
                 </span>
                 {ticketCategories.map((c) => (
@@ -299,7 +303,11 @@ export default function TicketsPage() {
                     key={c}
                     variant={categoryFilter.includes(c) ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs"
+                    className={`h-7 text-xs ${
+                      categoryFilter.includes(c)
+                        ? "bg-primary/15 text-primary border-primary/30 hover:bg-primary/20"
+                        : "border-border/50"
+                    }`}
                     onClick={() =>
                       handleCategoryFilter(toggle(categoryFilter, c))
                     }
@@ -326,7 +334,7 @@ export default function TicketsPage() {
           {isLoading ? (
             <TicketsTableSkeleton />
           ) : tickets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground py-8 text-center">
               {hasActiveFilters
                 ? "No tickets match your filters."
                 : "No tickets found."}
@@ -336,13 +344,16 @@ export default function TicketsPage() {
               <Table>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
+                    <TableRow
+                      key={headerGroup.id}
+                      className="border-border/50 hover:bg-transparent"
+                    >
                       {headerGroup.headers.map((header) => (
                         <TableHead key={header.id}>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="-ml-3 h-8 font-medium"
+                            className="-ml-3 h-8 font-medium text-muted-foreground hover:text-foreground"
                             onClick={header.column.getToggleSortingHandler()}
                           >
                             {flexRender(
@@ -357,8 +368,13 @@ export default function TicketsPage() {
                   ))}
                 </TableHeader>
                 <TableBody>
-                  {table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
+                  {table.getRowModel().rows.map((row, i) => (
+                    <TableRow
+                      key={row.id}
+                      className={`border-border/30 transition-colors hover:bg-accent/50 ${
+                        i % 2 === 1 ? "bg-muted/20" : ""
+                      }`}
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
                           {flexRender(
@@ -372,34 +388,34 @@ export default function TicketsPage() {
                 </TableBody>
               </Table>
 
-              {/* Pagination controls */}
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">
-                  {firstItem}–{lastItem} of {total} tickets
+              {/* Pagination */}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/30">
+                <p className="text-xs text-muted-foreground">
+                  {firstItem}–{lastItem} of {total}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => table.firstPage()}
                     disabled={!table.getCanPreviousPage()}
                   >
                     <ChevronsLeft className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Previous
+                    Prev
                   </Button>
-                  <span className="text-sm text-muted-foreground">
-                    Page {pageIndex + 1} of {pageCount}
+                  <span className="text-xs text-muted-foreground px-2">
+                    {pageIndex + 1} / {pageCount}
                   </span>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => table.nextPage()}
                     disabled={!table.getCanNextPage()}
@@ -408,8 +424,8 @@ export default function TicketsPage() {
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => table.lastPage()}
                     disabled={!table.getCanNextPage()}
                   >

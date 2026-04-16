@@ -14,6 +14,7 @@
     "test:e2e:install": "bunx playwright install chromium"
   },
   "devDependencies": {
+    "@fontsource-variable/dm-sans": "^5.2.8",
     "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "./components/ui/sonner";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
@@ -11,6 +12,7 @@ import AdminRoute from "./components/AdminRoute";
 
 function App() {
   return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
     <BrowserRouter>
       <Toaster />
       <Routes>
@@ -28,6 +30,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
