@@ -1,4 +1,11 @@
 import "dotenv/config";
+import * as Sentry from "@sentry/node";
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN || "",
+  enabled: !!process.env.SENTRY_DSN,
+});
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -34,10 +41,12 @@ const PORT = process.env.PORT || 3000;
 
 app.use(helmet());
 
-app.use(cors({
-  origin: process.env.CLIENT_URL,
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+  }),
+);
 
 // Rate limit auth sign-in to prevent brute-force attacks
 const authSignInLimiter = rateLimit({
@@ -76,6 +85,8 @@ app.get("/api/health/me", requireAuth, (req, res) => {
     },
   });
 });
+
+Sentry.setupExpressErrorHandler(app);
 
 async function start() {
   await boss.start();

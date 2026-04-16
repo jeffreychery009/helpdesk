@@ -183,11 +183,7 @@ export default function TicketsPage() {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   }
 
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: [
       "tickets",
       sortBy,
@@ -210,7 +206,9 @@ export default function TicketsPage() {
           page: pagination.pageIndex + 1,
           pageSize: pagination.pageSize,
           ...(statusFilter.length ? { status: statusFilter.join(",") } : {}),
-          ...(categoryFilter.length ? { category: categoryFilter.join(",") } : {}),
+          ...(categoryFilter.length
+            ? { category: categoryFilter.join(",") }
+            : {}),
           ...(search ? { search } : {}),
         },
       });
@@ -302,7 +300,9 @@ export default function TicketsPage() {
                     variant={categoryFilter.includes(c) ? "default" : "outline"}
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => handleCategoryFilter(toggle(categoryFilter, c))}
+                    onClick={() =>
+                      handleCategoryFilter(toggle(categoryFilter, c))
+                    }
                   >
                     {formatCategory(c)}
                   </Button>
@@ -347,7 +347,7 @@ export default function TicketsPage() {
                           >
                             {flexRender(
                               header.column.columnDef.header,
-                              header.getContext()
+                              header.getContext(),
                             )}
                             <SortIcon sorted={header.column.getIsSorted()} />
                           </Button>
@@ -363,7 +363,7 @@ export default function TicketsPage() {
                         <TableCell key={cell.id}>
                           {flexRender(
                             cell.column.columnDef.cell,
-                            cell.getContext()
+                            cell.getContext(),
                           )}
                         </TableCell>
                       ))}

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { generateText } from "ai";
@@ -99,6 +100,7 @@ export async function registerAutoResolveTicketWorker() {
       }
     } catch (err) {
       console.error("Auto-resolve ticket error:", err);
+      Sentry.captureException(err);
       await prisma.ticket.update({
         where: { id: ticketId },
         data: { status: "OPEN", assignedToId: null },
