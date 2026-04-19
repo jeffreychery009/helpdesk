@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/server/node_modules ./server/node_modules
+COPY --from=deps /app/core/node_modules ./core/node_modules
 
 # Copy server source and core (Bun runs TypeScript directly)
 COPY server/ server/
