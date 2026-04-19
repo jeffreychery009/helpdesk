@@ -188,8 +188,8 @@ export default function HomePage() {
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(value: string) => {
-                        const d = new Date(value + "T00:00:00");
+                      labelFormatter={(value) => {
+                        const d = new Date(String(value) + "T00:00:00");
                         return d.toLocaleDateString("en-US", {
                           month: "long",
                           day: "numeric",

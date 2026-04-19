@@ -6,6 +6,7 @@ Sentry.init({
   enabled: !!process.env.SENTRY_DSN,
 });
 
+import path from "path";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -39,7 +40,11 @@ for (const envVar of requiredEnvVars) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: process.env.NODE_ENV === "production" ? false : undefined,
+  }),
+);
 
 app.use(
   cors({
@@ -85,6 +90,16 @@ app.get("/api/health/me", requireAuth, (req, res) => {
     },
   });
 });
+
+// In production, serve the Vite-built client as static files
+if (process.env.NODE_ENV === "production") {
+  const clientDistPath = path.resolve(__dirname, "../dist/client");
+  app.use(express.static(clientDistPath));
+  // SPA fallback: serve index.html for all non-API routes
+  app.get(/^\/(?!api\/).*/, (_req, res) => {
+    res.sendFile(path.join(clientDistPath, "index.html"));
+  });
+}
 
 Sentry.setupExpressErrorHandler(app);
 

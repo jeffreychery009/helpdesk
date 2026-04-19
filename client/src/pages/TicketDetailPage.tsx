@@ -107,16 +107,19 @@ export default function TicketDetailPage() {
     },
   });
 
-  function handleAssign(value: string) {
+  function handleAssign(value: string | null) {
+    if (!value) return;
     const assignedToId = value === "unassigned" ? null : value;
     assignMutation.mutate(assignedToId);
   }
 
-  function handleStatusChange(value: string) {
+  function handleStatusChange(value: string | null) {
+    if (!value) return;
     updateMutation.mutate({ status: value as TicketStatus });
   }
 
-  function handleCategoryChange(value: string) {
+  function handleCategoryChange(value: string | null) {
+    if (!value) return;
     updateMutation.mutate({ category: value as TicketCategory });
   }
 
