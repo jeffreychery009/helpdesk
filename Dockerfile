@@ -27,6 +27,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/client/node_modules ./client/node_modules
 COPY --from=deps /app/server/node_modules ./server/node_modules
+COPY --from=deps /app/core/node_modules ./core/node_modules
 
 COPY package.json bun.lock ./
 COPY client/ client/
@@ -40,7 +41,7 @@ COPY --from=prisma-generate /app/server/src/generated/ server/src/generated/
 # In production, the client talks to the same origin (no separate API URL)
 ENV VITE_API_URL=""
 
-RUN bun run --filter client build
+RUN cd client && bun run build
 
 # ── Stage 4: Production image ──
 FROM oven/bun:1-slim AS production
